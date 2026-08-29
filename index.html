@@ -12,6 +12,7 @@
 
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="config.js"></script>
 <script src="app.js" defer></script>
 </head>
 <body class="m-0 min-h-screen bg-[linear-gradient(168deg,#0F2E29_0%,#143A34_50%,#1B4C4A_100%)] bg-fixed text-[#EAF0E9]">
@@ -115,7 +116,7 @@
         <p>Every signup is tagged to your role, so what you hear from us is always relevant — never generic.</p>
       </div>
       <div class="road-grid mt-[46px] grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-5">
-          <div class="road-col border-t-2 border-[#2E5A50] pt-[22px] [&_p]:mt-3 [&_p]:text-base [&_p]:leading-[1.5] [&_p]:text-[#DCE6DF]"><div class="road-k text-[13px] font-semibold uppercase tracking-[0.1em] text-[#FFD753]">Right now</div><p>An email confirmation lands instantly, with your personal referral link.</p></div>
+          <div class="road-col border-t-2 border-[#2E5A50] pt-[22px] [&_p]:mt-3 [&_p]:text-base [&_p]:leading-[1.5] [&_p]:text-[#DCE6DF]"><div class="road-k text-[13px] font-semibold uppercase tracking-[0.1em] text-[#FFD753]">Right now</div><p>Your place is confirmed instantly, with your real waitlist number and personal referral link.</p></div>
           <div class="road-col border-t-2 border-[#2E5A50] pt-[22px] [&_p]:mt-3 [&_p]:text-base [&_p]:leading-[1.5] [&_p]:text-[#DCE6DF]"><div class="road-k text-[13px] font-semibold uppercase tracking-[0.1em] text-[#FFD753]">Every Week</div><p>A short update tailored to your role — build progress and what&rsquo;s going live near you.</p></div>
           <div class="road-col border-t-2 border-[#2E5A50] pt-[22px] [&_p]:mt-3 [&_p]:text-base [&_p]:leading-[1.5] [&_p]:text-[#DCE6DF]"><div class="road-k text-[13px] font-semibold uppercase tracking-[0.1em] text-[#FFD753]">Months 4–5</div><p>Waitlist members get first access and first review — ahead of the general public.</p></div>
           <div class="road-col border-t-2 border-[#2E5A50] pt-[22px] [&_p]:mt-3 [&_p]:text-base [&_p]:leading-[1.5] [&_p]:text-[#DCE6DF]"><div class="road-k text-[13px] font-semibold uppercase tracking-[0.1em] text-[#FFD753]">Launch week</div><p>Your download link arrives the moment Akrapex opens — supply first, so homes are ready.</p></div>
@@ -174,6 +175,10 @@
         </div>
       </div>
       <form class="card rounded-3xl border border-[#E4EAE1] bg-[#F7F8F4] p-[clamp(28px,3.5vw,52px)] shadow-[0_16px_40px_rgba(0,0,0,0.08)]" id="wl-form" novalidate>
+        <div aria-hidden="true" class="absolute -left-[10000px] h-px w-px overflow-hidden">
+          <label for="website">Leave this field empty</label>
+          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
         <div class="fields flex flex-col gap-6" id="f-fields"></div>
         <div id="f-submit-err"></div>
         <button type="submit" class="submit mt-[34px] w-full cursor-pointer rounded-full border-0 bg-[linear-gradient(135deg,#2A6B53,#2A6B84)] p-[18px] text-[16.5px] font-bold text-[#F6F4EE] shadow-[0_10px_26px_rgba(42,107,132,0.30)] transition hover:-translate-y-px hover:brightness-110 disabled:cursor-wait disabled:opacity-70" id="f-submit">Claim my place on the list</button>
@@ -192,7 +197,7 @@
       </div>
       <span class="done-eyebrow mt-[26px] inline-block text-[13px] font-semibold uppercase tracking-[0.14em] text-[#FFD753]" id="d-eyebrow"></span>
       <h1>You&rsquo;re on the list.</h1>
-      <p class="done-lede mx-auto mt-[18px] max-w-[44ch] text-lg leading-[1.55] text-[#C7D6CC]">Welcome to the movement. Look out for your email confirmation — and here&rsquo;s your link to bring others along.</p>
+      <p class="done-lede mx-auto mt-[18px] max-w-[44ch] text-lg leading-[1.55] text-[#C7D6CC]">Welcome to the movement. Your place is secured — and here&rsquo;s your personal link to bring others along.</p>
 
       <div class="num mx-auto mt-7 flex max-w-[460px] items-center justify-center gap-[18px] rounded-[18px] border border-[rgba(255,215,83,0.34)] bg-[linear-gradient(135deg,rgba(255,225,133,0.16),rgba(240,180,41,0.07))] px-6 py-[18px] max-[620px]:flex-col max-[620px]:gap-2 max-[620px]:text-center">
         <div class="num-big whitespace-nowrap font-['Newsreader'] text-[46px] font-semibold leading-none text-[#FFD753]" id="d-num"></div>

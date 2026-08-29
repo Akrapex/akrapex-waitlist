@@ -93,7 +93,7 @@ const FAQS = [
   },
   {
     q: "What happens after I sign up?",
-    a: "You get an email confirmation with a referral link, then a short monthly update tailored to your role. Waitlist members get first access in the final run-up to launch, and your download link arrives the moment we go live.",
+    a: "Your place is confirmed immediately with your real waitlist number and personal referral link. Waitlist members get first access in the final run-up to launch, and your access link arrives when Akrapex goes live.",
   },
   {
     q: "What does eco-conscious living actually mean?",
@@ -125,8 +125,8 @@ const FAQS = [
   },
 ];
 
-/* Submissions continue to use the endpoint from the supplied page. */
-const FORM_ENDPOINT = "https://formspree.io/f/mpqvljzd";
+const REFERRAL_STORAGE_KEY = "akrapex_referral_code";
+const REFERRAL_CODE_PATTERN = /^AKR-[A-Z0-9]{10}$/;
 
 const views = {
   home: document.getElementById("view-home"),
@@ -138,8 +138,70 @@ let actorKey = null;
 let values = {};
 let errors = {};
 let submitting = false;
-let refCode = "";
+let currentReferralLink = "";
 let openFaq = 0;
+
+function getAppConfig() {
+  const config = window.AKRAPEX_CONFIG || {};
+  const supabaseUrl = String(config.supabaseUrl || "").replace(/\/$/, "");
+  const functionName = String(config.functionName || "join-waitlist").trim();
+
+  if (!supabaseUrl || supabaseUrl.includes("YOUR_PROJECT_REF")) {
+    throw new Error(
+      "The Supabase project URL has not been configured yet. Update config.js and try again.",
+    );
+  }
+
+  return {
+    supabaseUrl,
+    functionName,
+    siteUrl: String(config.siteUrl || "").trim(),
+  };
+}
+
+function normalizeReferralCode(value) {
+  const code = String(value || "").trim().toUpperCase();
+  return REFERRAL_CODE_PATTERN.test(code) ? code : "";
+}
+
+function captureIncomingReferral() {
+  const code = normalizeReferralCode(
+    new URLSearchParams(window.location.search).get("ref"),
+  );
+
+  if (code) {
+    try {
+      window.localStorage.setItem(REFERRAL_STORAGE_KEY, code);
+    } catch (_) {
+      // The current URL still carries the referral if storage is unavailable.
+    }
+  }
+
+  return code;
+}
+
+function getIncomingReferral() {
+  const codeFromUrl = captureIncomingReferral();
+  if (codeFromUrl) return codeFromUrl;
+
+  try {
+    return normalizeReferralCode(
+      window.localStorage.getItem(REFERRAL_STORAGE_KEY),
+    );
+  } catch (_) {
+    return "";
+  }
+}
+
+function buildReferralLink(referralCode) {
+  const config = getAppConfig();
+  const baseUrl = config.siteUrl || window.location.href;
+  const url = new URL(baseUrl, window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("ref", referralCode);
+  return url.toString();
+}
 
 function show(name) {
   Object.entries(views).forEach(([key, view]) => {
@@ -264,47 +326,46 @@ document.getElementById("wl-form").addEventListener("submit", async (event) => {
     return;
   }
 
-  const emailName = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "member";
-  refCode = emailName + Math.floor(100 + Math.random() * 900);
-
-  const payload = {
-    _subject: `Akrapex waitlist — ${ACTORS[actorKey].label}`,
-    email,
-    actor: ACTORS[actorKey].label,
-    actorKey,
-    referralCode: refCode,
-    submittedAt: new Date().toISOString(),
-  };
-
   const button = document.getElementById("f-submit");
   submitting = true;
   button.disabled = true;
   button.textContent = "Joining…";
 
   try {
-    const response = await fetch(FORM_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
+    const config = getAppConfig();
+    const response = await fetch(
+      `${config.supabaseUrl}/functions/v1/${encodeURIComponent(config.functionName)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          role: actorKey,
+          referredByCode: getIncomingReferral() || null,
+          website: document.getElementById("website")?.value || "",
+        }),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
-    if (!response.ok) {
-      let message = "";
-      try {
-        const result = await response.json();
-        if (result?.errors) {
-          message = result.errors.map((item) => item.message).join(" ");
-        }
-      } catch (_) {
-        // The fallback message below handles non-JSON errors.
-      }
-      throw new Error(message || `HTTP ${response.status}`);
+    let result = null;
+    try {
+      result = await response.json();
+    } catch (_) {
+      // The status-based message below handles non-JSON responses.
     }
 
-    confirmDone();
+    if (!response.ok) {
+      throw new Error(result?.error || `HTTP ${response.status}`);
+    }
+
+    if (!result?.success || !result?.referralCode || !result?.waitlistNumber) {
+      throw new Error("Supabase returned an incomplete waitlist response.");
+    }
+
+    confirmDone(result);
   } catch (error) {
     const message =
       error?.message && !/^HTTP /.test(error.message)
@@ -319,36 +380,25 @@ document.getElementById("wl-form").addEventListener("submit", async (event) => {
   }
 });
 
-function claimNumber() {
-  const seed = 741;
-  let number = seed + 1;
-  try {
-    const stored = Number.parseInt(localStorage.getItem("akrapex_wl_count"), 10);
-    number = (Number.isNaN(stored) ? seed : stored) + 1;
-    localStorage.setItem("akrapex_wl_count", String(number));
-  } catch (_) {
-    // The confirmation still works if localStorage is unavailable.
-  }
-  return number;
-}
-
-function confirmDone() {
-  const number = claimNumber();
+function confirmDone(result) {
+  const number = Number(result.waitlistNumber);
   document.getElementById("d-eyebrow").textContent = ACTORS[actorKey].eyebrow;
   document.getElementById("d-num").textContent = `#${number.toLocaleString("en-US")}`;
-  document.getElementById("d-note").textContent =
-    number > 0 && number <= 1000
+  document.getElementById("d-note").textContent = result.alreadySubscribed
+    ? "You were already registered — your original place is still secured"
+    : number > 0 && number <= 1000
       ? `Founder pricing secured — ${(1000 - number).toLocaleString("en-US")} of 1,000 spots left`
       : "You're on the priority launch list";
-  document.getElementById("d-ref").value = `akrapex.ng/join?ref=${refCode}`;
+
+  currentReferralLink = buildReferralLink(result.referralCode);
+  document.getElementById("d-ref").value = currentReferralLink;
   document.getElementById("btn-copy").textContent = "Copy";
   show("done");
 }
 
 document.getElementById("btn-copy").addEventListener("click", async () => {
-  const link = `https://akrapex.ng/join?ref=${refCode}`;
   try {
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(currentReferralLink);
   } catch (_) {
     const input = document.getElementById("d-ref");
     input.select();
@@ -373,4 +423,5 @@ function goHome() {
   show("home");
 }
 
+captureIncomingReferral();
 renderFaq();
